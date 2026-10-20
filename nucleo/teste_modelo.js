@@ -1,0 +1,22 @@
+var fs = require('fs'); eval(fs.readFileSync('modelo.js', 'utf8') + ';global.X={planRows,bestBur,parseBurs,summarize};');
+var Q = global.X, ok = true;
+function chk(n, c, d) { console.log((c ? 'OK  ' : 'FAIL') + ' ' + n + (d ? ' ' + d : '')); if (!c) ok = false; }
+var p = { en: { C: 0.5, M: 0.9, I: 1.0 }, ad: { C: 0.1, M: 0.2, I: 0.2 }, ce: { VC: 0.4, VM: 0.7, VI: 0.7, LM: 0.4, LI: 0.4 }, mode: 'dif', minCer: 0.3 };
+var r = Q.planRows(p);
+chk('5 linhas (cervical sem lobo)', r.length === 5);
+var vm = r.filter(function (x) { return x.zone === 'M' && x.site === 'V'; })[0];
+var lm = r.filter(function (x) { return x.zone === 'M' && x.site === 'L'; })[0];
+chk('desgaste = cerâmica - acréscimo', Math.abs(vm.red - 0.5) < 1e-9 && Math.abs(lm.red - 0.2) < 1e-9);
+chk('esmalte restante', Math.abs(vm.rem - 0.4) < 1e-9 && Math.abs(lm.rem - 0.7) < 1e-9);
+var u = Q.planRows(Object.assign({}, p, { mode: 'uni' }));
+chk('uniforme iguala lobo e vale', u.filter(function (x) { return x.zone === 'M'; }).every(function (x) { return Math.abs(x.red - 0.5) < 1e-9; }));
+var q = JSON.parse(JSON.stringify(p)); q.ce.VC = 0.8; var d = Q.planRows(q)[0];
+chk('dentina exposta quando desgaste > esmalte', d.flags.dentin && Math.abs(d.dentin - 0.2) < 1e-9, d.dentin.toFixed(2));
+var c = JSON.parse(JSON.stringify(p)); c.ce.LM = 0.1; var cl = Q.planRows(c).filter(function (x) { return x.zone === 'M' && x.site === 'L'; })[0];
+chk('cerâmica menor que acréscimo vira desgaste zero', cl.red === 0 && cl.flags.capped && Math.abs(cl.cer - 0.2) < 1e-9);
+chk('fresa 0,5 para 0,6', Q.bestBur(0.6, [0.3, 0.5, 0.7]).bur === 0.5 && Math.abs(Q.bestBur(0.6, [0.3, 0.5, 0.7]).rest - 0.1) < 1e-9);
+chk('menor que a menor fresa', Q.bestBur(0.2, [0.3, 0.5]).bur === null);
+chk('sem desgaste', Q.bestBur(0, [0.3]).none === true);
+chk('parse de fresas', JSON.stringify(Q.parseBurs('0,7; 0,3 0,5; 0,5')) === '[0.3,0.5,0.7]');
+var s = Q.summarize(r); chk('média lobo < vale', s.avgL < s.avgV, s.avgL.toFixed(2) + ' < ' + s.avgV.toFixed(2));
+process.exit(ok ? 0 : 1);
