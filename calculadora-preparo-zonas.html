@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de Planejamento do Preparo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: foto grande à esquerda, painel de medição à direita; empilha no celular.
+   Linguagem: Apple (tipografia do sistema, superfícies agrupadas, controles segmentados, azul do sistema). */
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #f2f2f7;
+  --line: rgba(60, 60, 67, 0.16);
+  --fg: #1d1d1f;
+  --fg-dim: #6e6e73;
+  --accent: #0071e3;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(0, 113, 227, 0.1);
+  --seg-thumb: #ffffff;
+  --card-c: #8e8e93;
+  --tooth-c: #ff9f0a;
+  --ref-c: #30b0c7;
+  --ok: #248a3d;
+  --warn: #b25000;
+  --bad: #d70015;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 28px rgba(0, 0, 0, 0.06);
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-data: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e; --line: rgba(84, 84, 88, 0.55);
+    --fg: #f5f5f7; --fg-dim: #98989d; --accent: #0a84ff; --accent-ink: #ffffff; --accent-soft: rgba(10, 132, 255, 0.2);
+    --seg-thumb: #636366; --card-c: #aeaeb2; --tooth-c: #ff9f0a; --ref-c: #64d2ff;
+    --ok: #30d158; --warn: #ff9f0a; --bad: #ff453a; --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e; --line: rgba(84, 84, 88, 0.55);
+  --fg: #f5f5f7; --fg-dim: #98989d; --accent: #0a84ff; --accent-ink: #ffffff; --accent-soft: rgba(10, 132, 255, 0.2);
+  --seg-thumb: #636366; --card-c: #aeaeb2; --tooth-c: #ff9f0a; --ref-c: #64d2ff;
+  --ok: #30d158; --warn: #ff9f0a; --bad: #ff453a; --shadow: none;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.47 var(--font-body); -webkit-font-smoothing: antialiased;
+  padding-block: 40px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1160px; margin: 0 auto; display: grid; gap: 24px; }
+header h1 { font: 700 40px/1.08 var(--font-display); letter-spacing: -0.022em; margin: 0 0 10px; text-wrap: balance; }
+header p { margin: 0; color: var(--fg-dim); font-size: 17px; line-height: 1.47; max-width: 56ch; }
+.example-banner {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px 16px; border-radius: 14px; color: var(--fg);
+  background: var(--accent-soft); font-size: 14px;
+}
+.example-banner[hidden] { display: none; }
+.app { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .app { grid-template-columns: minmax(0, 1fr); } header h1 { font-size: 34px; } }
+.col { display: grid; gap: 20px; min-width: 0; }
+.panel { background: var(--surface); border-radius: 20px; padding: 22px; min-width: 0; box-shadow: var(--shadow); }
+.panel h2 { font: 600 19px/1.2 var(--font-display); letter-spacing: -0.012em; margin: 0 0 16px; color: var(--fg); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+button, .btn, select, input[type="text"], input[type="number"] {
+  font: inherit; color: var(--fg); background: var(--surface-2); border: 0;
+  border-radius: 10px; padding: 8px 14px; min-height: 40px;
+}
+button, .btn {
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--accent-soft); color: var(--accent); font-weight: 500; border-radius: 980px; padding: 8px 18px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+button:hover, .btn:hover { opacity: 0.82; }
+button:active, .btn:active { transform: scale(0.98); }
+button:focus-visible, .btn:focus-within, input:focus-visible, select:focus-visible, canvas:focus-visible, summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.seg { display: flex; gap: 2px; padding: 2px; margin-bottom: 14px; background: var(--surface-2); border-radius: 11px; }
+.seg button {
+  flex: 1 1 0; min-width: 0; background: transparent; color: var(--fg); border-radius: 9px; padding: 7px 8px;
+  font-size: 14px; font-weight: 500; min-height: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.seg button[aria-pressed="true"] { background: var(--seg-thumb); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.04); font-weight: 600; }
+.seg button:hover { opacity: 1; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.dot.card { background: var(--card-c); } .dot.tooth { background: var(--tooth-c); } .dot.ref { background: var(--ref-c); }
+.step { font-size: 12px; color: var(--fg-dim); font-weight: 500; }
+.stage { position: relative; background: #000; border-radius: 14px; overflow: hidden; }
+canvas#view { display: block; width: 100%; touch-action: none; cursor: crosshair; }
+.hint { margin: 12px 2px 0; color: var(--fg-dim); font-size: 14px; min-height: 20px; }
+.tips summary { cursor: pointer; font: 600 17px/1.3 var(--font-display); letter-spacing: -0.01em; list-style: none; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; }
+.tips summary::-webkit-details-marker { display: none; }
+.tips summary::after { content: "›"; font-size: 24px; color: var(--fg-dim); transition: transform 0.2s ease; }
+.tips details[open] summary::after { transform: rotate(90deg); }
+.tips ul { margin: 12px 0 0; padding-left: 18px; color: var(--fg-dim); font-size: 15px; }
+.tips li { margin: 5px 0; }
+
+.swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sw { border-radius: 14px; overflow: hidden; background: var(--surface-2); }
+.sw .chip { height: 96px; background: var(--surface-2); }
+.sw .cap { padding: 8px 12px; font-size: 13px; color: var(--fg-dim); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.sw .cap b { color: var(--fg); font-family: var(--font-data); font-weight: 500; font-size: 12px; }
+.de-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0 10px; }
+.de-num { font: 600 60px/1 var(--font-display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.de-unit { color: var(--fg-dim); font-size: 15px; font-weight: 500; }
+.pill { padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; background: color-mix(in srgb, currentColor 14%, transparent); }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); } .pill.none { color: var(--fg-dim); }
+.scale { position: relative; height: 6px; background: var(--surface-2); border-radius: 3px; margin: 8px 0 26px; }
+.scale .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--fg-dim); }
+.scale .fill.ok { background: var(--ok); } .scale .fill.warn { background: var(--warn); } .scale .fill.bad { background: var(--bad); }
+.scale .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--fg); opacity: 0.35; }
+.scale .tick span { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font: 12px var(--font-body); color: var(--fg-dim); white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 9px 4px; border-bottom: 0.5px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+th:first-child, td:first-child { text-align: left; }
+th { font: 500 12px var(--font-body); color: var(--fg-dim); }
+td { font: 15px var(--font-display); }
+td:first-child { color: var(--fg-dim); font-size: 14px; }
+ul.warns { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+ul.warns li { padding: 10px 12px 10px 34px; position: relative; background: var(--surface-2); font-size: 14px; border-radius: 12px; }
+ul.warns li::before { content: ""; position: absolute; left: 14px; top: 17px; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+ul.warns li.good::before { background: var(--ok); }
+.mono { font-family: var(--font-data); font-size: 12px; color: var(--fg-dim); }
+.fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fields label, .field { display: grid; gap: 6px; font-size: 13px; color: var(--fg-dim); }
+.fields input, .field input, .field select { width: 100%; color: var(--fg); font-size: 16px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.row > * { min-width: 0; }
+input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 40px; background: transparent; padding: 0; }
+input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; }
+input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.note { color: var(--fg-dim); font-size: 13px; line-height: 1.45; margin: 12px 0 0; }
+textarea#csvBox { width: 100%; min-height: 92px; font: 12px/1.45 var(--font-data); color: var(--fg); background: var(--surface-2); border: 0; border-radius: 12px; padding: 12px; resize: vertical; margin-top: 12px; }
+figure.report { margin: 16px 0 0; }
+figure.report img { width: 100%; max-width: 420px; height: auto; border-radius: 12px; display: block; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12); }
+figure.report figcaption { color: var(--fg-dim); font-size: 13px; margin-top: 8px; }
+.empty { color: var(--fg-dim); font-size: 14px; margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .scale .fill { transition: width 0.3s ease; } }
+@media (prefers-reduced-motion: reduce) { button, .btn, .tips summary::after { transition: none; } }
+
+:root { --en: #d9cdb6; --rem: #e5776c; --ce: #5ea0e6; --den: #e8b25a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --en: #b9ad96; --rem: #ff6b5e; --ce: #4b92e8; --den: #c9923f; } }
+:root[data-theme="dark"] { --en: #b9ad96; --rem: #ff6b5e; --ce: #4b92e8; --den: #c9923f; }
+.fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; align-items: end; }
+@media (max-width: 520px) { .fields.two { grid-template-columns: minmax(0, 1fr); } }
+.fields input:disabled { opacity: 0.55; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--fg-dim); margin: 0 0 10px; }
+.legend i { display: inline-block; width: 14px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+#chart svg { width: 100%; height: auto; display: block; }
+#chart text { font: 12px var(--font-body); fill: var(--fg-dim); }
+#chart text.v { fill: var(--fg); }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+figure.report img { max-width: 100%; }
+td.num, th.num { text-align: right; }
+td.bad { color: var(--bad); font-weight: 600; }
+td.ok { color: var(--ok); }
+
+.app { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+@media (max-width: 880px) { .app { grid-template-columns: minmax(0, 1fr); } }
+#chart text { font-size: 15px; }
+#planTab td, #planTab th { padding-left: 8px; padding-right: 8px; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Calculadora de Planejamento do Preparo por Zonas</h1>
+    <p>Calcule, para cada zona do dente, quanto desgastar a partir da espessura de esmalte, do acréscimo do mock-up e da espessura de cerâmica desejada. Compare o preparo uniforme com a redução diferencial entre lobos e vales.</p>
+  </header>
+
+  <div class="banner" role="note"><span><strong>Ferramenta de estudo e planejamento.</strong> Os valores iniciais de espessura são ilustrativos. Use as medidas do seu caso (tomografia, modelo, sondagem) e a espessura mínima do seu material. A redução diferencial é uma proposta conceitual ainda não testada em bancada nem em casos clínicos. O cálculo não substitui o julgamento clínico nem a conferência do preparo com guias e índices.</span></div>
+
+  <div class="app">
+    <div class="col">
+      <section class="panel" aria-labelledby="h-dente">
+        <h2 id="h-dente">1. Dente e esmalte</h2>
+        <div class="field"><label for="toothPre">Dente de partida</label><select id="toothPre"></select></div>
+        <p class="note">Espessura do esmalte vestibular em cada terço, em mm, antes do preparo.</p>
+        <div class="fields">
+          <label for="enC">Cervical<input id="enC" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="enM">Médio<input id="enM" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="enI">Incisal<input id="enI" type="text" inputmode="decimal" autocomplete="off"></label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-acr">
+        <h2 id="h-acr">2. Acréscimo do mock-up</h2>
+        <p class="note" style="margin-top:-6px">Quanto o volume vestibular planejado (enceramento ou mock-up) fica além da superfície original, em mm. Zero quando a lente acompanha o contorno atual.</p>
+        <div class="fields">
+          <label for="adC">Cervical<input id="adC" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="adM">Médio<input id="adM" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="adI">Incisal<input id="adI" type="text" inputmode="decimal" autocomplete="off"></label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-cer">
+        <h2 id="h-cer">3. Cerâmica desejada</h2>
+        <div class="seg" role="group" aria-label="Tipo de preparo">
+          <button type="button" id="modeDif" aria-pressed="true">Diferencial</button>
+          <button type="button" id="modeUni" aria-pressed="false">Uniforme</button>
+        </div>
+        <p class="note" style="margin-top:-6px" id="modeNote"></p>
+        <p class="note">Espessura final da cerâmica, em mm.</p>
+        <div class="fields">
+          <label for="ceVC">Vale, cervical<input id="ceVC" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="ceVM">Vale, médio<input id="ceVM" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="ceVI">Vale, incisal<input id="ceVI" type="text" inputmode="decimal" autocomplete="off"></label>
+        </div>
+        <div class="fields" style="margin-top:12px" id="lobeFields">
+          <label for="ceLM">Lobo, médio<input id="ceLM" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="ceLI">Lobo, incisal<input id="ceLI" type="text" inputmode="decimal" autocomplete="off"></label>
+          <span></span>
+        </div>
+        <p class="note">No terço cervical não há lobos, então vale e lobo coincidem ali.</p>
+        <div class="fields two">
+          <label for="minCer">Espessura mínima da cerâmica (mm)<input id="minCer" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label for="burs">Fresas de orientação (mm)<input id="burs" type="text" autocomplete="off"></label>
+        </div>
+        <p class="note">Informe o mínimo do seu material e sistema. Separe as fresas por ponto e vírgula, por exemplo 0,3; 0,5; 0,7.</p>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-labelledby="h-res">
+        <h2 id="h-res">Plano de desgaste</h2>
+        <div class="tablewrap"><table id="planTab"></table></div>
+        <ul class="warns" id="warns"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="h-vis">
+        <h2 id="h-vis">Corte por zona</h2>
+        <div class="legend"><span><i style="background:var(--en)"></i>Esmalte que permanece</span><span><i style="background:var(--rem)"></i>Removido</span><span><i style="background:var(--ce)"></i>Cerâmica</span><span><i style="background:var(--den)"></i>Dentina</span></div>
+        <div id="chart"></div>
+        <p class="note">Cada linha mostra, em cima, o esmalte original e o que será removido e, embaixo, o esmalte restante e a cerâmica sobre ele. A linha tracejada marca a superfície original do dente.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="h-rel">
+        <h2 id="h-rel">Relatório</h2>
+        <div class="btnrow">
+          <button type="button" id="btnPng" hidden>Baixar PNG</button>
+          <button type="button" id="btnCopy">Copiar resumo</button>
+        </div>
+        <textarea id="csvBox" hidden readonly></textarea>
+        <figure class="report"><img id="repImg" alt="Relatório do plano de desgaste"><figcaption>Imagem do relatório com os parâmetros e o plano.</figcaption></figure>
+      </section>
+
+      <section class="panel tips">
+        <details><summary>Como o cálculo funciona e limites</summary>
+          <ul>
+            <li>A superfície final da lente fica a uma distância do esmalte igual ao desgaste mais o acréscimo do mock-up. Logo, desgaste = espessura da cerâmica menos acréscimo.</li>
+            <li>Esmalte restante = esmalte inicial menos desgaste. Se o desgaste passa do esmalte, a diferença é dentina exposta, o que o programa avisa.</li>
+            <li>Se a cerâmica desejada for menor que o acréscimo, o desgaste seria negativo. O programa assume desgaste zero e mostra a cerâmica real, que fica igual ao acréscimo.</li>
+            <li>Redução diferencial: menos desgaste sobre os lobos de dentina, com cerâmica mais fina que deixa o dente aparecer através dela, e desgaste convencional nos vales entre os lobos. É um conceito de planejamento, não um protocolo validado.</li>
+            <li>A fresa sugerida é a maior fresa de orientação que não ultrapassa o desgaste, com o complemento a remover depois de unir os sulcos.</li>
+            <li>Os valores iniciais de esmalte e acréscimo são ilustrativos. A espessura do esmalte varia entre dentes e pessoas, então use a sua medida.</li>
+          </ul>
+        </details>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+"use strict";
+// ---------- Modelo de planejamento do preparo por zonas ----------
+var ZONES = [{ k: 'C', n: 'Cervical' }, { k: 'M', n: 'Médio' }, { k: 'I', n: 'Incisal' }];
+function round2(x) { return Math.round(x * 100) / 100; }
+// p: { en:{C,M,I}, ad:{C,M,I}, ce:{VC,VM,VI,LM,LI}, mode:'dif'|'uni', minCer }
+function planRows(p) {
+  var rows = [];
+  ZONES.forEach(function (z) {
+    ['L', 'V'].forEach(function (s) {
+      var key = (z.k === 'C' ? 'V' : s) + z.k;
+      var cer = p.ce[key];
+      if (p.mode === 'uni' || z.k === 'C') cer = p.ce['V' + z.k];
+      var en = p.en[z.k], ad = p.ad[z.k];
+      var red = Math.max(0, cer - ad);
+      var cerReal = red + ad;
+      var rem = en - red;
+      rows.push({
+        zone: z.k, zoneName: z.n, site: s, siteName: s === 'L' ? 'Lobo' : 'Vale', single: (z.k === 'C' || p.mode === 'uni'),
+        enamel: en, add: ad, cerWanted: cer, red: red, cer: cerReal, rem: rem,
+        dentin: Math.max(0, red - en), pctLeft: en > 0 ? Math.max(0, rem) / en * 100 : 0,
+        flags: {
+          dentin: red > en + 1e-9,
+          thin: cerReal < p.minCer - 1e-9,
+          capped: cer < ad - 1e-9,
+          low: rem >= 0 && en > 0 && rem / en < 0.3
+        }
+      });
+    });
+  });
+  // no terço cervical lobo e vale coincidem: mantém só a linha do vale
+  return rows.filter(function (r) { return !((r.zone === 'C' || p.mode === 'uni') && r.site === 'L'); });
+}
+function bestBur(red, burs) {
+  if (red <= 1e-9) return { bur: 0, rest: 0, none: true };
+  var b = null;
+  burs.forEach(function (x) { if (x <= red + 1e-9 && (b === null || x > b)) b = x; });
+  if (b === null) return { bur: null, rest: red, none: false };
+  return { bur: b, rest: round2(red - b), none: false };
+}
+function parseBurs(s) {
+  var out = String(s).split(/[;\s]+/).map(function (t) { return parseFloat(t.replace(',', '.')); }).filter(function (v) { return !isNaN(v) && v > 0 && v < 3; });
+  out.sort(function (a, b) { return a - b; });
+  return out.filter(function (v, i) { return i === 0 || v !== out[i - 1]; });
+}
+function summarize(rows) {
+  var v = rows.filter(function (r) { return r.site === 'V'; }), l = rows.filter(function (r) { return r.site === 'L'; });
+  var avg = function (a) { return a.length ? a.reduce(function (s, r) { return s + r.red; }, 0) / a.length : 0; };
+  return { avgV: avg(v), avgL: avg(l) };
+}
+
+// ---------- Interface ----------
+var CAN_DOWNLOAD = true;
+function $(id) { return document.getElementById(id); }
+function fmt(n, d) { return (isNaN(n) ? 0 : n).toFixed(d === undefined ? 2 : d).replace('.', ','); }
+function parseNum(s) { var v = parseFloat(String(s).trim().replace(',', '.')); return isNaN(v) ? null : v; }
+function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
+function svgEl(tag, attrs, txt) { var e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (txt !== undefined) e.textContent = txt; return e; }
+
+var TEETH = [
+  { n: 'Incisivo central superior', en: [0.5, 0.9, 1.0], ad: [0.1, 0.2, 0.2], v: [0.4, 0.7, 0.7], l: [0.4, 0.4] },
+  { n: 'Incisivo lateral superior', en: [0.45, 0.8, 0.9], ad: [0.1, 0.2, 0.2], v: [0.4, 0.65, 0.65], l: [0.35, 0.35] },
+  { n: 'Canino superior', en: [0.5, 0.9, 1.0], ad: [0.1, 0.2, 0.2], v: [0.4, 0.7, 0.7], l: [0.4, 0.4] },
+  { n: 'Personalizado', en: null }
+];
+var MODE = 'dif';
+var IDS = { en: ['enC', 'enM', 'enI'], ad: ['adC', 'adM', 'adI'], ce: ['ceVC', 'ceVM', 'ceVI', 'ceLM', 'ceLI'] };
+var lastRep = null;
+
+function setAll(t) {
+  [0, 1, 2].forEach(function (i) { $(IDS.en[i]).value = fmt(t.en[i]); $(IDS.ad[i]).value = fmt(t.ad[i]); });
+  [0, 1, 2].forEach(function (i) { $(IDS.ce[i]).value = fmt(t.v[i]); });
+  $('ceLM').value = fmt(t.l[0]); $('ceLI').value = fmt(t.l[1]);
+}
+function readState() {
+  var vals = {}, bad = false;
+  ['enC', 'enM', 'enI', 'adC', 'adM', 'adI', 'ceVC', 'ceVM', 'ceVI', 'ceLM', 'ceLI', 'minCer'].forEach(function (id) {
+    var v = parseNum($(id).value);
+    if (v === null || v < 0 || v > 5) bad = true; vals[id] = v;
+  });
+  if (bad) return null;
+  var burs = parseBurs($('burs').value);
+  return {
+    en: { C: vals.enC, M: vals.enM, I: vals.enI }, ad: { C: vals.adC, M: vals.adM, I: vals.adI },
+    ce: { VC: vals.ceVC, VM: vals.ceVM, VI: vals.ceVI, LM: vals.ceLM, LI: vals.ceLI },
+    mode: MODE, minCer: vals.minCer, burs: burs
+  };
+}
+function setMode(m) {
+  MODE = m;
+  $('modeDif').setAttribute('aria-pressed', m === 'dif');
+  $('modeUni').setAttribute('aria-pressed', m === 'uni');
+  $('ceLM').disabled = $('ceLI').disabled = (m === 'uni');
+  $('modeNote').textContent = m === 'dif'
+    ? 'Cerâmica mais fina sobre os lobos e mais espessa nos vales entre eles.'
+    : 'Mesma espessura de cerâmica em lobos e vales. Os campos de lobo ficam desligados e a espessura do vale vale para a zona toda.';
+  render();
+}
+
+function burText(r, burs) {
+  var b = bestBur(r.red, burs);
+  if (b.none) return 'sem desgaste';
+  if (b.bur === null) return 'abaixo de ' + fmt(burs[0] || 0, 1);
+  return fmt(b.bur, 1) + ' mm' + (b.rest > 0.004 ? ' + ' + fmt(b.rest, 2) : '');
+}
+function renderTable(rows, o) {
+  var t = $('planTab'); t.textContent = '';
+  var thead = el('thead'), hr = el('tr');
+  ['Zona', 'Cerâmica', 'Desgaste', 'Esmalte restante', 'Fresa'].forEach(function (h, i) { var th = el('th', i ? 'num' : '', h); hr.appendChild(th); });
+  thead.appendChild(hr); t.appendChild(thead);
+  var tb = el('tbody');
+  rows.forEach(function (r) {
+    var tr = el('tr');
+    tr.appendChild(el('td', '', r.zoneName + (r.single ? '' : ', ' + r.siteName.toLowerCase())));
+    tr.appendChild(el('td', 'num', fmt(r.cer) + (r.flags.thin ? ' !' : '')));
+    tr.appendChild(el('td', 'num', fmt(r.red)));
+    var rem = el('td', 'num' + (r.flags.dentin ? ' bad' : ''), r.flags.dentin ? 'dentina +' + fmt(r.dentin) : fmt(r.rem) + ' (' + Math.round(r.pctLeft) + '%)');
+    tr.appendChild(rem);
+    tr.appendChild(el('td', 'num', burText(r, o.burs)));
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+function warnings(rows, o) {
+  var ul = $('warns'); ul.textContent = '';
+  var n = 0;
+  function add(txt, good) { var li = el('li', good ? 'good' : '', txt); ul.appendChild(li); n++; }
+  rows.forEach(function (r) {
+    var nm = r.zoneName.toLowerCase() + (r.single ? '' : ', ' + r.siteName.toLowerCase());
+    if (r.flags.dentin) add('Zona ' + nm + ': o desgaste de ' + fmt(r.red) + ' mm passa o esmalte de ' + fmt(r.enamel) + ' mm e expõe ' + fmt(r.dentin) + ' mm de dentina. Reduza a cerâmica, aumente o acréscimo ou confira a espessura do esmalte.');
+    else if (r.flags.low) add('Zona ' + nm + ': sobra pouco esmalte (' + Math.round(r.pctLeft) + '% do original). A adesão em esmalte restante diminui.');
+    if (r.flags.thin) add('Zona ' + nm + ': cerâmica de ' + fmt(r.cer) + ' mm, abaixo do mínimo informado de ' + fmt(o.minCer) + ' mm.');
+    if (r.flags.capped) add('Zona ' + nm + ': a cerâmica desejada (' + fmt(r.cerWanted) + ' mm) é menor que o acréscimo. O desgaste fica zero e a cerâmica real é de ' + fmt(r.cer) + ' mm.');
+  });
+  if (!n) add('Nenhuma zona com dentina exposta, cerâmica abaixo do mínimo ou esmalte residual baixo.', true);
+  var s = summarize(rows);
+  if (o.mode === 'dif' && s.avgV - s.avgL > 0.004) add('Redução diferencial: o desgaste médio nos lobos é de ' + fmt(s.avgL) + ' mm contra ' + fmt(s.avgV) + ' mm nos vales, uma diferença de ' + fmt(s.avgV - s.avgL) + ' mm.', true);
+  if (!o.burs.length) add('Nenhuma fresa de orientação válida foi informada. Digite valores em mm separados por ponto e vírgula.');
+}
+function chart(rows) {
+  var W = 640, left = 96, right = 140, rowH = 64, top = 14, H = top + rows.length * rowH + 46;
+  var mn = 0, mx = 0.5;
+  rows.forEach(function (r) { mn = Math.min(mn, r.rem); mx = Math.max(mx, r.enamel, r.rem + r.cer); });
+  mn = Math.min(mn, 0); mx = Math.ceil(mx * 10) / 10 + 0.1;
+  var plotW = W - left - right, sx = function (v) { return left + (v - mn) / (mx - mn) * plotW; };
+  var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Corte por zona: esmalte, desgaste e cerâmica' });
+  // dentina (x < 0) e régua
+  if (mn < 0) svg.appendChild(svgEl('rect', { x: left, y: top - 4, width: sx(0) - left, height: rows.length * rowH + 4, style: 'fill:var(--den);opacity:0.25' }));
+  var ticks = []; for (var v = Math.ceil(mn * 10) / 10; v <= mx + 1e-9; v += 0.2) ticks.push(Math.round(v * 10) / 10);
+  ticks.forEach(function (v) {
+    svg.appendChild(svgEl('line', { x1: sx(v), x2: sx(v), y1: top - 4, y2: top + rows.length * rowH, style: 'stroke:var(--line)', 'stroke-width': 0.6 }));
+    svg.appendChild(svgEl('text', { x: sx(v), y: H - 28, 'text-anchor': 'middle' }, fmt(v, 1)));
+  });
+  svg.appendChild(svgEl('text', { x: left, y: H - 6, 'text-anchor': 'start' }, 'mm a partir da junção esmalte e dentina'));
+  rows.forEach(function (r, i) {
+    var y = top + i * rowH, h = 15;
+    svg.appendChild(svgEl('text', { x: 6, y: y + 20, class: 'v', style: 'font-weight:600' }, r.zoneName));
+    if (!r.single) svg.appendChild(svgEl('text', { x: 6, y: y + 36 }, r.siteName));
+    // antes: esmalte e parte removida
+    var keep = Math.max(0, r.enamel - r.red);
+    svg.appendChild(svgEl('rect', { x: sx(0), y: y + 4, width: Math.max(0, sx(keep) - sx(0)), height: h, rx: 3, style: 'fill:var(--en)' }));
+    var remStart = Math.max(0, r.enamel - r.red);
+    svg.appendChild(svgEl('rect', { x: sx(remStart), y: y + 4, width: Math.max(0, sx(r.enamel) - sx(remStart)), height: h, rx: 3, style: 'fill:var(--rem);opacity:0.85' }));
+    if (r.dentin > 0) svg.appendChild(svgEl('rect', { x: sx(-r.dentin), y: y + 4, width: sx(0) - sx(-r.dentin), height: h, rx: 3, style: 'fill:var(--rem)' }));
+    // depois: esmalte restante + cerâmica
+    var pStart = r.rem; // pode ser negativo
+    if (r.rem > 0) svg.appendChild(svgEl('rect', { x: sx(0), y: y + 4 + h + 4, width: sx(r.rem) - sx(0), height: h, rx: 3, style: 'fill:var(--en)' }));
+    svg.appendChild(svgEl('rect', { x: sx(pStart), y: y + 4 + h + 4, width: sx(pStart + r.cer) - sx(pStart), height: h, rx: 3, style: 'fill:var(--ce)' }));
+    // superfície original
+    svg.appendChild(svgEl('line', { x1: sx(r.enamel), x2: sx(r.enamel), y1: y, y2: y + 2 * h + 12, style: 'stroke:var(--fg)', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: 0.6 }));
+    svg.appendChild(svgEl('text', { x: W - right + 12, y: y + 17, class: 'v' }, 'desg. ' + fmt(r.red)));
+    svg.appendChild(svgEl('text', { x: W - right + 12, y: y + 36 }, 'cer. ' + fmt(r.cer)));
+    if (i < rows.length - 1) svg.appendChild(svgEl('line', { x1: 0, x2: W, y1: y + rowH - 6, y2: y + rowH - 6, style: 'stroke:var(--line)', 'stroke-width': 0.5 }));
+  });
+  var c = $('chart'); c.textContent = ''; c.appendChild(svg);
+}
+function summaryText(rows, o) {
+  var L = ['Plano de desgaste por zonas (' + (o.mode === 'dif' ? 'diferencial' : 'uniforme') + ')'];
+  rows.forEach(function (r) {
+    L.push(r.zoneName + (r.single ? '' : ' ' + r.siteName.toLowerCase()) + ': esmalte ' + fmt(r.enamel) + ', acréscimo ' + fmt(r.add) + ', cerâmica ' + fmt(r.cer) + ', desgaste ' + fmt(r.red) + ', restante ' + (r.flags.dentin ? 'dentina +' + fmt(r.dentin) : fmt(r.rem)) + ', fresa ' + burText(r, o.burs));
+  });
+  L.push('Valores em mm. Estimativa de estudo, não substitui o julgamento clínico.');
+  return L.join('\n');
+}
+function buildReport(rows, o) {
+  var S = 2, W = 760, H = 150 + rows.length * 34 + 30;
+  var cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+  var c = cv.getContext('2d'); c.scale(S, S);
+  var fam = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#1d1d1f'; c.font = '700 22px ' + fam; c.fillText('Plano de preparo por zonas', 28, 42);
+  c.fillStyle = '#6e6e73'; c.font = '14px ' + fam;
+  c.fillText((o.mode === 'dif' ? 'Redução diferencial entre lobos e vales' : 'Redução uniforme') + '. Valores em mm.', 28, 66);
+  c.fillText('Espessura mínima da cerâmica informada: ' + fmt(o.minCer) + ' mm. Fresas: ' + (o.burs.map(function (b) { return fmt(b, 1); }).join('; ') || 'nenhuma'), 28, 88);
+  var cols = [28, 230, 330, 430, 560], heads = ['Zona', 'Cerâmica', 'Desgaste', 'Esmalte restante', 'Fresa'];
+  c.font = '600 12px ' + fam; c.fillStyle = '#6e6e73'; heads.forEach(function (h, i) { c.fillText(h, cols[i], 126); });
+  c.strokeStyle = '#d2d2d7'; c.beginPath(); c.moveTo(28, 134); c.lineTo(W - 28, 134); c.stroke();
+  rows.forEach(function (r, i) {
+    var y = 160 + i * 34;
+    c.font = '15px ' + fam; c.fillStyle = '#1d1d1f';
+    c.fillText(r.zoneName + (r.single ? '' : ', ' + r.siteName.toLowerCase()), cols[0], y);
+    c.fillText(fmt(r.cer), cols[1], y); c.fillText(fmt(r.red), cols[2], y);
+    c.fillStyle = r.flags.dentin ? '#d70015' : '#1d1d1f';
+    c.fillText(r.flags.dentin ? 'dentina +' + fmt(r.dentin) : fmt(r.rem) + ' (' + Math.round(r.pctLeft) + '%)', cols[3], y);
+    c.fillStyle = '#1d1d1f'; c.fillText(burText(r, o.burs), cols[4], y);
+  });
+  c.fillStyle = '#6e6e73'; c.font = '12px ' + fam;
+  c.fillText('Estimativa de estudo. Não substitui o julgamento clínico nem a conferência do preparo.', 28, H - 22);
+  return cv.toDataURL('image/png');
+}
+
+function render() {
+  var o = readState();
+  if (!o) { $('planTab').textContent = ''; $('warns').textContent = ''; $('chart').textContent = ''; var li = el('li', '', 'Preencha todos os campos com números entre 0 e 5 mm.'); $('warns').appendChild(li); return; }
+  var rows = planRows(o);
+  renderTable(rows, o); warnings(rows, o); chart(rows);
+  lastRep = { rows: rows, o: o };
+  $('repImg').src = buildReport(rows, o);
+  $('csvBox').value = summaryText(rows, o);
+}
+function init() {
+  var s = $('toothPre'); TEETH.forEach(function (t, i) { var op = document.createElement('option'); op.value = i; op.textContent = t.n; s.appendChild(op); });
+  s.value = 0; setAll(TEETH[0]); $('minCer').value = '0,30'; $('burs').value = '0,3; 0,5; 0,7';
+  s.addEventListener('change', function () { var t = TEETH[+s.value]; if (t.en) setAll(t); render(); });
+  var fields = [].concat(IDS.en, IDS.ad, IDS.ce, ['minCer', 'burs']);
+  fields.forEach(function (id) { $(id).addEventListener('input', function () { if (IDS.en.concat(IDS.ad, IDS.ce).indexOf(id) >= 0) $('toothPre').value = TEETH.length - 1; render(); }); });
+  $('modeDif').addEventListener('click', function () { setMode('dif'); });
+  $('modeUni').addEventListener('click', function () { setMode('uni'); });
+  $('btnCopy').addEventListener('click', function () {
+    var box = $('csvBox'); box.hidden = false; box.select();
+    var done = false; try { done = document.execCommand('copy'); } catch (e) {}
+    if (navigator.clipboard && !done) { navigator.clipboard.writeText(box.value).catch(function () {}); }
+    $('btnCopy').textContent = 'Resumo copiado'; setTimeout(function () { $('btnCopy').textContent = 'Copiar resumo'; }, 1800);
+  });
+  if (CAN_DOWNLOAD) {
+    var b = $('btnPng'); b.hidden = false;
+    b.addEventListener('click', function () { var a = document.createElement('a'); a.href = $('repImg').src; a.download = 'plano-preparo-zonas.png'; document.body.appendChild(a); a.click(); a.remove(); });
+  }
+  setMode('dif');
+}
+init();
+
+})();
+</script>
+</body>
+</html>
